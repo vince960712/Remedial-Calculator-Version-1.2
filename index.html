@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Remedial Score Calculator</title>
+<style>
+  *{box-sizing:border-box}
+  body{
+    margin:0;font-family:Segoe UI,Arial,sans-serif;
+    background:linear-gradient(135deg,#eef2ff,#f8fafc);
+    color:#1e293b;min-height:100vh;padding:24px
+  }
+  .app{max-width:980px;margin:auto}
+  .header{
+    background:#fff;border-radius:22px;padding:26px 30px;
+    box-shadow:0 10px 30px rgba(15,23,42,.08);margin-bottom:20px
+  }
+  h1{margin:0 0 6px;font-size:30px;color:#1d4ed8}
+  .subtitle{margin:0;color:#64748b}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .card{
+    background:#fff;border-radius:22px;padding:24px;
+    box-shadow:0 10px 30px rgba(15,23,42,.08)
+  }
+  .full{grid-column:1/-1}
+  label{display:block;font-weight:700;margin:14px 0 7px}
+  input,select{
+    width:100%;padding:12px 14px;border:1px solid #cbd5e1;
+    border-radius:12px;font-size:16px;background:#fff
+  }
+  input:focus,select:focus{outline:3px solid #dbeafe;border-color:#3b82f6}
+  .formula{
+    background:#eff6ff;border-left:5px solid #3b82f6;
+    padding:14px;border-radius:10px;margin-top:16px;line-height:1.5
+  }
+  button{
+    border:0;border-radius:12px;padding:13px 18px;font-size:16px;
+    font-weight:700;cursor:pointer
+  }
+  .primary{background:#2563eb;color:#fff}
+  .secondary{background:#e2e8f0;color:#334155}
+  .danger{background:#fee2e2;color:#991b1b}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .result{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px
+  }
+  .metric{background:#f8fafc;border-radius:14px;padding:16px;text-align:center}
+  .metric small{display:block;color:#64748b;margin-bottom:5px}
+  .metric strong{font-size:25px;color:#0f172a}
+  .new-score{background:#dcfce7}
+  .new-score strong{color:#15803d}
+  .table-wrap{overflow:auto;margin-top:16px}
+  table{width:100%;border-collapse:collapse;min-width:700px}
+  th,td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:center}
+  th{background:#f8fafc}
+  .note{font-size:13px;color:#64748b;margin-top:8px}
+  @media print{
+    @page{margin:12mm;size:auto}
+    body{background:#fff;padding:0}
+    .app{max-width:none}
+    .header,.card{box-shadow:none;border:1px solid #cbd5e1}
+    .actions,.formula,.note{display:none!important}
+    .grid{display:block}
+    .card{margin-bottom:14px;break-inside:avoid}
+    .table-wrap{overflow:visible}
+    table{min-width:0;font-size:11px}
+    th,td{padding:6px}
+    .action-col,.record-delete{display:none!important}
+  }
+  @media(max-width:720px){
+    .grid{grid-template-columns:1fr}.full{grid-column:auto}
+    .result{grid-template-columns:1fr}
+    body{padding:12px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>📊 Remedial Score Calculator</h1>
+    <p class="subtitle">Calculate a student's new score after taking a remedial test.</p>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Student & Test Information</h2>
+      <label>Student Name</label>
+      <input id="student" placeholder="e.g., Juan Dela Cruz">
+      <label>Test / Assessment</label>
+      <input id="test" placeholder="e.g., 1st Quarter Test">
+      <label>Original Test Highest Possible Score</label>
+      <input id="max" type="number" min="1" step="0.01" value="50">
+      <label>Remedial Test Highest Possible Score</label>
+      <input id="remMax" type="number" min="1" step="0.01" value="50" placeholder="e.g., 50">
+      <div class="note">The two highest possible scores may be different.</div>
+    </section>
+
+    <section class="card">
+      <h2>Scores</h2>
+      <label>Original Test Score</label>
+      <input id="original" type="number" min="0" step="0.01" placeholder="e.g., 28">
+      <label>Remedial Test Score</label>
+      <input id="remedial" type="number" min="0" step="0.01" placeholder="e.g., 42">
+      <div class="formula"><b>Computation:</b> Compare the original and remedial percentages, then apply 50% of the percentage-point improvement to the original percentage. The resulting percentage is converted to the original test's score scale.</div>
+    </section>
+
+    <section class="card full">
+      <h2>Result</h2>
+      <div class="result">
+        <div class="metric"><small>Original Percentage</small><strong id="origPct">—</strong></div>
+        <div class="metric"><small>Remedial Percentage</small><strong id="remPct">—</strong></div>
+        <div class="metric new-score"><small>NEW SCORE</small><strong id="newScore">—</strong></div>
+      </div>
+      <div id="message" class="note"></div>
+      <div class="actions">
+        <button type="button" class="primary" onclick="calculate()">Calculate New Score</button>
+        <button type="button" class="secondary" onclick="addRecord()">Add to Class List</button>
+        <button type="button" class="secondary" onclick="printPage()">Print</button>
+        <button type="button" class="danger" onclick="clearAll()">Clear</button>
+      </div>
+    </section>
+
+    <section class="card full">
+      <h2>Class Remedial Records</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Student</th><th>Test</th><th>Original</th>
+            <th>Remedial</th><th>New Score</th><th>New %</th><th class="action-col">Action</th>
+          </tr></thead>
+          <tbody id="records"></tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button type="button" class="secondary" onclick="exportCSV()">⬇ Export CSV</button>
+        <button type="button" class="danger" onclick="clearRecords()">Clear Class List</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+let records = JSON.parse(localStorage.getItem("remedialRecords") || "[]");
+
+const $ = id => document.getElementById(id);
+
+function fmt(n){
+  return Number(n).toFixed(2).replace(/\.00$/,'').replace(/(\.\d)0$/,'$1');
+}
+
+function values(){
+  const max=Number($("max").value), remMax=Number($("remMax").value);
+  const o=Number($("original").value), r=Number($("remedial").value);
+  if(!max || max<=0 || !remMax || remMax<=0 || o<0 || r<0 || o>max || r>remMax){
+    alert("Please enter valid scores. The original score must be within the original maximum, and the remedial score must be within the remedial maximum.");
+    return null;
+  }
+  return {max,remMax,o,r};
+}
+function newScore(max,remMax,o,r){
+  const originalPct=o/max;
+  const remedialPct=r/remMax;
+
+  // Apply 50% of the percentage-point improvement to the original percentage.
+  const adjustedPct=originalPct + 0.5*(remedialPct-originalPct);
+
+  // Convert the adjusted percentage back to the ORIGINAL test score scale.
+  return Math.round(Math.max(0,Math.min(max,adjustedPct*max)));
+}
+function calculate(){
+  const v=values(); if(!v)return null;
+  const n=newScore(v.max,v.remMax,v.o,v.r);
+  $("origPct").textContent=fmt(v.o/v.max*100)+"%";
+  $("remPct").textContent=fmt(v.r/v.remMax*100)+"%";
+  $("newScore").textContent=fmt(n)+" / "+fmt(v.max);
+  $("message").textContent="New percentage: "+fmt(n/v.max*100)+"%";
+  return {...v,n};
+}
+function addRecord(){
+  const x=calculate(); if(!x)return;
+  records.push({
+    student:$("student").value.trim()||"Unnamed Student",
+    test:$("test").value.trim()||"Remedial Test",
+    original:x.o, remedial:x.r, newScore:x.n, max:x.max, remMax:x.remMax
+  });
+  localStorage.setItem("remedialRecords",JSON.stringify(records));
+  render();
+}
+function render(){
+  $("records").innerHTML=records.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td><td>${esc(r.student)}</td><td>${esc(r.test)}</td>
+      <td>${fmt(r.original)} / ${fmt(r.max)}</td>
+      <td>${fmt(r.remedial)} / ${fmt(r.remMax || r.max)}</td>
+      <td><b>${fmt(r.newScore)} / ${fmt(r.max)}</b></td>
+      <td>${fmt(r.newScore/r.max*100)}%</td>
+      <td class="action-col"><button type="button" class="danger record-delete" onclick="deleteRecord(${i})">Delete</button></td>
+    </tr>`).join("");
+}
+function deleteRecord(i){
+  records.splice(i,1);
+  localStorage.setItem("remedialRecords",JSON.stringify(records));
+  render();
+}
+function printPage(){
+  // Refresh the class table before printing, then let @media print hide
+  // buttons, notes, formulas, and record action controls.
+  render();
+  window.focus();
+  setTimeout(() => window.print(), 50);
+}
+
+function clearRecords(){
+  if(!records.length){
+    alert("The class list is already empty.");
+    return;
+  }
+
+  if(!confirm("Clear all saved class records? This cannot be undone.")){
+    return;
+  }
+
+  records = [];
+  localStorage.removeItem("remedialRecords");
+  render();
+  alert("Class list cleared successfully.");
+}
+
+function clearAll(){
+  // Clear student/test scores, restore both maximum scores to 50,
+  // and reset every result field.
+  ["student","test","original","remedial"].forEach(id => $(id).value = "");
+  $("max").value = "50";
+  $("remMax").value = "50";
+  $("origPct").textContent = "—";
+  $("remPct").textContent = "—";
+  $("newScore").textContent = "—";
+  $("message").textContent = "";
+  $("student").focus();
+}
+function esc(s){
+  return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+function exportCSV(){
+  if(!records.length){
+    alert("No records to export.");
+    return;
+  }
+
+  const rows = [
+    ["#","Student","Test","Original Score","Remedial Score","New Score","Original Maximum","Remedial Maximum","New Percentage"]
+  ];
+
+  records.forEach((r,i) => rows.push([
+    i + 1,
+    r.student,
+    r.test,
+    r.original,
+    r.remedial,
+    r.newScore,
+    r.max,
+    r.remMax || r.max,
+    (r.newScore / r.max * 100).toFixed(2) + "%"
+  ]));
+
+  // RFC-style CRLF line endings + quoted fields prevent broken rows
+  // when names/tests contain commas or line breaks.
+  const csv = rows
+    .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(","))
+    .join("\r\n");
+
+  // UTF-8 BOM makes the CSV open correctly in Microsoft Excel.
+  const blob = new Blob(["\ufeff", csv], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = "remedial_scores.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+render();
+</script>
+</body>
+</html>
